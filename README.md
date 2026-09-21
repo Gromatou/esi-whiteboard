@@ -39,9 +39,10 @@ c'est **ce qui donne confiance** dans l'usage de l'outil.
   serveur Discord** : une **promo**, une **classe**, un **groupe de travail**. On y ouvre
   des tableaux entre membres, on y range les documents, et l'IA aide tout le monde.
 
-Il n'y a **aucun accès anonyme** : sans login Discord, pas de tableau. La variable
-`DISCORD_GUILD_ID` permet en plus de **verrouiller l'accès aux seuls membres de ton
-serveur**.
+Il n'y a **aucun accès anonyme** : sans login Discord, pas de tableau. Et
+`DISCORD_GUILD_ID` est **obligatoire** : le serveur **refuse de démarrer** sans lui, et
+le login est refusé aux non-membres. Impossible donc, même par erreur, d'ouvrir une
+instance à tout Discord.
 
 ### Un espace qui persiste (et qui sert de stockage)
 
@@ -292,8 +293,9 @@ par million de tokens.
 Activez le mode développeur (Paramètres Discord → Avancés), clic droit sur votre
 serveur → **Copier l'identifiant du serveur**. C'est `DISCORD_GUILD_ID`.
 
-> Si `DISCORD_GUILD_ID` est vide, tout compte Discord peut se connecter.
-> S'il est renseigné, seuls les membres de ce serveur sont acceptés.
+> **Obligatoire.** Le serveur **refuse de démarrer** si `DISCORD_GUILD_ID` est vide, et
+> seuls les membres de ce serveur peuvent se connecter. C'est ce qui fait de l'outil un
+> **complément à ton serveur Discord** (promo/classe/groupe), pas un service ouvert.
 
 ### 3. Inviter le bot (pour `guilds.members.read`)
 
@@ -357,7 +359,7 @@ Toutes les variables sont dans `.env` (voir `.env.example`) :
 | `DATA_DIR` | dossier de données (rooms, assets, agent, usage) |
 | `SESSION_SECRET` | secret de signature du cookie de session (`openssl rand -hex 32`) |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | OAuth2 Discord |
-| `DISCORD_GUILD_ID` | **recommandé** : restreint l'accès aux seuls membres de ton serveur Discord (promo/classe/groupe) |
+| `DISCORD_GUILD_ID` | **obligatoire** : serveur Discord autorisé (le serveur refuse de démarrer sans) |
 | `AGENT_PROVIDER` | `deepseek` (défaut), `openai`, `anthropic` ou `google` |
 | `AGENT_API_KEY` | clé API du fournisseur IA |
 | `AGENT_MODEL` | `deepseek-flash` (multimodal + tool-calling) |

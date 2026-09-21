@@ -25,6 +25,18 @@ const ASSETS_DIR = join(DATA_DIR, 'assets')
 const PUBLIC_DIR = join(__dirname, 'public')
 const SECURE = APP_URL.startsWith('https')
 
+// Discord login is the access gate (identity + trust for the shared AI and file
+// storage). The server REFUSES TO START if it is not fully configured, so nobody
+// can accidentally deploy an instance open to all of Discord.
+if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET || !DISCORD_GUILD_ID) {
+	console.error(
+		'[fatal] Configuration Discord incomplete. DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET\n' +
+			'        et DISCORD_GUILD_ID sont OBLIGATOIRES : le login Discord est la porte\n' +
+			"        d'entree (identite + confiance). Voir README > Setup Discord."
+	)
+	process.exit(1)
+}
+
 mkdirSync(ROOMS_DIR, { recursive: true })
 mkdirSync(ASSETS_DIR, { recursive: true })
 
@@ -491,6 +503,13 @@ app.get('/auth/callback', async (req, reply) => {
 	}
 	const token = await tokenRes.json()
 	const auth = { Authorization: `Bearer ${token.access_token}` }
+	// Fail closed: never accept a login if the allowed guild is not configured.
+	if (!DISCORD_GUILD_ID) {
+		return reply
+			.code(503)
+			.type('text/plain')
+			.send('Serveur mal configure : DISCORD_GUILD_ID manquant. Login refuse.')
+	}
 	// /users/@me/guilds/{guild}/member returns the current user's member object
 	// (incl. the per-server nickname `nick`). 404 => not a member of the guild.
 	const [userRes, memberRes] = await Promise.all([

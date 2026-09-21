@@ -15,7 +15,8 @@ documents (PDF, images), et on y travaille **en temps réel**. Les liens des tab
 
 > 🔑 **La connexion Discord est obligatoire.** C'est la porte d'entrée : elle garantit
 > qu'on sait **qui** écrit, qui utilise l'IA (partagée) et qui dépose des fichiers sur le
-> serveur. Il n'y a **pas d'accès anonyme**.
+> serveur. Il n'y a **pas d'accès anonyme**, et l'outil est **verrouillé sur ton serveur
+> Discord** (le serveur refuse de démarrer sans `DISCORD_GUILD_ID`).
 
 ## Installation en 5 minutes
 
