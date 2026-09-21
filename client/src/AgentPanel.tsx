@@ -196,15 +196,15 @@ function resetSentSigs() {
 	sentSigs.clear()
 }
 
-// Force the (re)reading of specific chunks given board points (x, y): each point maps
-// to the 450x450 chunk that contains it. Used by the `read_chunks` tool, bypassing the
+// Force the (re)reading of chunks given their numbers (i, j): chunk (i,j) is the
+// 450x450 area at x=i*450, y=j*450. Used by the `read_chunks` tool, bypassing the
 // incremental cache (always re-renders, even if the chunk is already "in memory").
-async function captureChunksAt(editor: Editor, points: { x: number; y: number }[]): Promise<Capture> {
+async function captureChunks(editor: Editor, chunks: { i: number; j: number }[]): Promise<Capture> {
 	const seen = new Set<string>()
 	const boxes: Box[] = []
-	for (const p of Array.isArray(points) ? points : []) {
-		const i = Math.floor(Number(p.x) / CHUNK_UNITS)
-		const j = Math.floor(Number(p.y) / CHUNK_UNITS)
+	for (const c of Array.isArray(chunks) ? chunks : []) {
+		const i = Math.floor(Number(c.i))
+		const j = Math.floor(Number(c.j))
 		if (!Number.isFinite(i) || !Number.isFinite(j)) continue
 		const key = `${i}_${j}`
 		if (seen.has(key)) continue
@@ -215,7 +215,7 @@ async function captureChunksAt(editor: Editor, points: { x: number; y: number }[
 	const view = { x: vp.x, y: vp.y, w: vp.w, h: vp.h }
 	const images: string[] = []
 	const tiles: TileMeta[] = []
-	const chunks: ChunkMeta[] = []
+	const outChunks: ChunkMeta[] = []
 	let bytes = 0
 	for (const box of boxes) {
 		const meta: TileMeta = {
@@ -231,13 +231,13 @@ async function captureChunksAt(editor: Editor, points: { x: number; y: number }[
 			bytes += img.length
 			images.push(img)
 			tiles.push(meta)
-			chunks.push({ ...meta, status: 'sent' })
+			outChunks.push({ ...meta, status: 'sent' })
 		} else {
-			chunks.push({ ...meta, status: 'empty' })
+			outChunks.push({ ...meta, status: 'empty' })
 		}
 	}
-	lastCaptureChunks = chunks
-	return { images, tiles, view, chunks }
+	lastCaptureChunks = outChunks
+	return { images, tiles, view, chunks: outChunks }
 }
 
 function loadPref<T>(key: string, fallback: T): T {
@@ -398,7 +398,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				let d: {
 					answer?: string
 					usage?: unknown
-					toolCall?: { name?: string; args?: { mode?: string; points?: { x: number; y: number }[] } }
+					toolCall?: { id?: string; name?: string; arguments?: string; reasoningContent?: string }
 				} = {}
 				try {
 					d = raw ? JSON.parse(raw) : {}
@@ -415,14 +415,20 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				}
 				if (d.usage) setUsage((u) => addUsage(u, d.usage))
 				if (d.toolCall) {
+					// The server sends `arguments` as a JSON string — parse it (do NOT read `args`).
+					let args: { mode?: string; chunks?: { i: number; j: number }[] } = {}
+					try {
+						args = d.toolCall.arguments ? JSON.parse(d.toolCall.arguments) : {}
+					} catch {
+						/* ignore malformed args */
+					}
 					let cap: Capture = { images: [], tiles: [], view: { x: 0, y: 0, w: 0, h: 0 }, chunks: [] }
 					try {
 						if (editor) {
-							if (d.toolCall.name === 'read_chunks' && d.toolCall.args && Array.isArray(d.toolCall.args.points)) {
-								cap = await captureChunksAt(editor, d.toolCall.args.points)
+							if (d.toolCall.name === 'read_chunks' && Array.isArray(args.chunks)) {
+								cap = await captureChunks(editor, args.chunks)
 							} else {
-								const mode: CaptureMode =
-									d.toolCall.args && d.toolCall.args.mode === 'overview' ? 'overview' : 'tiles'
+								const mode: CaptureMode = args.mode === 'overview' ? 'overview' : 'tiles'
 								cap = await captureView(editor, downgraded ? 'overview' : mode)
 							}
 						}
