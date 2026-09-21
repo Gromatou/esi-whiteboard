@@ -215,7 +215,7 @@ const AGENT_SYSTEM_PROMPT =
 	"Tu regardes un tableau blanc collaboratif. On te fournit une PREMIERE image qui est une vue d'ensemble de ce que les utilisateurs voient, suivie de PLUSIEURS tuiles (des zooms de cette meme vue), dans l'ordre de gauche a droite puis de haut en bas, pour que tu puisses lire les details. Sers-toi de la vue d'ensemble pour comprendre la disposition (ce qui est a cote de quoi) et des tuiles pour lire l'ecriture. Lis attentivement TOUT ce qui est ecrit, y compris l'ecriture manuscrite au stylet, et reponds a la demande. L'utilisateur travaille en ecrivant ou dessinant sur le tableau, et tu recois une capture de l'ecran : ne lui demande jamais de t'ENVOYER quelque chose. Formule plutot tes demandes en termes d'ecriture sur le tableau (ex. 'ecris la ligne suivante', 'montre-moi en ecrivant...', 'note ton resultat sur le tableau'). Pour des equations, verifie-les pas a pas et signale les erreurs precises. Ton role est d'aider l'utilisateur a progresser, pas de faire le travail a sa place : par defaut, ne donne PAS directement la reponse. Fournis plutot des indices et explique les concepts qui sont peut-etre mal compris ou lies a l'etape ou l'utilisateur est bloque, pour l'aider a trouver par lui-meme. Tu peux donner la solution complete ou faire le calcul a sa place UNIQUEMENT si l'utilisateur le demande explicitement. Avant de conclure a une erreur, verifie que ce n'est pas simplement un symbole ou un signe peu lisible (ex. un '<' lu a la place d'un '=', un '1' pris pour un 'l', un '7' pour un '1', un '0' pour un 'O', un '+' pour un 't'). Si, et seulement si, une alternative VISUELLEMENT TRES PROCHE (facilement confondable) rend l'equation coherente, emets l'hypothese du symbole reellement ecrit et poursuis le calcul avec cette hypothese. Ne remplace jamais une valeur ou un nombre par un autre sans lien visuel (ex. supposer '59' au lieu de '32') dans le seul but de rendre l'equation coherente : dans ce cas, signale l'erreur telle quelle. Ecris les mathematiques en LaTeX : $...$ pour un symbole isole, et $$...$$ (bloc, sur sa propre ligne) pour toute equation complete (fraction, racine, integrale, somme), afin qu'elle soit bien lisible. Pour la multiplication, ecris le point median \\cdot (ex. $2 \\cdot 3$) plutot que \\times ou *. Attention : l'utilisateur ecrit lui aussi la multiplication avec un point (median '·', ou un simple point). Un point place entre deux nombres ou deux termes doit donc etre lu comme une MULTIPLICATION, et non comme un separateur decimal (en notation francaise la decimale s'ecrit avec une virgule). En cas de doute, interprete le point comme une multiplication."
 
 const AGENT_MEMO_PROMPT =
-	" Enfin, a chaque fois que tu recois des images, transcris dans ta reponse l'essentiel de ce que tu as lu et verifie, de facon concise et autosuffisante : equations, resultats et verdicts (par ex. 'demonstration que x = y : calculs corrects'). N'y recopie PAS les details non essentiels (mise en page, dessins decoratifs, texte sans rapport). Ce resume texte te sert de MEMOIRE pour les messages suivants, ou les zones deja vues ne sont PAS renvoyees en image : fie-toi a ce que tu as deja verifie (tu l'as deja controle), ne contredis pas ce constat et ne redemande pas de capture des zones inchangees."
+	" MEMOIRE INTERNE : a chaque fois que tu recois des images, ecris le contenu que tu as lu et verifie (equations, resultats, verdicts ; ex. 'demonstration que x = y : calculs corrects') dans un bloc <memo>...</memo>. Ce bloc est RETIRE avant d'etre montre a l'utilisateur, mais CONSERVE dans l'historique pour toi : c'est ta memoire des tuiles deja vues. Ne mets donc JAMAIS ce contenu dans ta reponse visible, et n'y recopie pas les details non essentiels (mise en page, dessins decoratifs, texte sans rapport). Fie-toi a cette memoire pour les zones deja vues : ne contredis pas ce que tu as deja verifie et ne redemande pas de capture des zones inchangees. Si malgre tout tu as besoin de relire une zone precise, appelle l'outil read_chunks avec ses coordonnees."
 
 const AGENT_UI_PROMPT =
 	" Interface : le bouton BLEU (fleche) n'envoie QUE le texte. Le bouton VIOLET (icone 'capture d'ecran') envoie, en plus du texte, une capture de la vue ACTUELLE du tableau, decoupee en plusieurs tuiles haute definition (chaque zone est vue en pleine resolution). Si l'utilisateur te demande de verifier des calculs, de lire ce qu'il a ecrit ou de corriger quelque chose, et que tu n'as recu AUCUNE image pour ce message : ne devine pas et n'invente pas le contenu. Dis-lui d'appuyer sur le bouton VIOLET (icone capture d'ecran) pour t'envoyer sa vue. Tu peux aussi lui expliquer que ce bouton violet envoie la vue actuelle de son ecran au modele, en pleine resolution."
@@ -241,6 +241,32 @@ const AGENT_TOOLS = [
 					reason: { type: 'string', description: 'Pourquoi tu as besoin de cette vue.' },
 				},
 				required: ['mode'],
+			},
+		},
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'read_chunks',
+			description:
+				"Force la (re)lecture de chunks precis du tableau, MEME s'ils sont deja dans ta memoire. A utiliser si tu as besoin de revoir une zone precise (relire une equation, verifier un detail). Chaque point (x, y) en unites tldraw designe le chunk de 450x450 qui le contient.",
+			parameters: {
+				type: 'object',
+				properties: {
+					points: {
+						type: 'array',
+						description: 'Points (coins) des zones a relire : un point par chunk (x, y en unites tldraw).',
+						items: {
+							type: 'object',
+							properties: {
+								x: { type: 'number' },
+								y: { type: 'number' },
+							},
+							required: ['x', 'y'],
+						},
+					},
+				},
+				required: ['points'],
 			},
 		},
 	},
@@ -669,8 +695,11 @@ app.post('/api/agent/ask', async (req, reply) => {
 			}
 		}
 		const answer = content || '(reponse vide)'
+		// Store the FULL text (with <memo>...) so the model keeps its memory next turn,
+		// but never SHOW the memo block to the user.
 		insert.run(room, 'assistant', answer)
-		return { answer, usage: usage || null }
+		const visible = answer.replace(/<memo>[\s\S]*?<\/memo>/gi, '').trim()
+		return { answer: visible || '(reponse vide)', usage: usage || null }
 	} catch (e) {
 		const msg = `⚠️ ${e.message}`
 		insert.run(room, 'assistant', msg)

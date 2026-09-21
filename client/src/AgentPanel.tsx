@@ -196,6 +196,50 @@ function resetSentSigs() {
 	sentSigs.clear()
 }
 
+// Force the (re)reading of specific chunks given board points (x, y): each point maps
+// to the 450x450 chunk that contains it. Used by the `read_chunks` tool, bypassing the
+// incremental cache (always re-renders, even if the chunk is already "in memory").
+async function captureChunksAt(editor: Editor, points: { x: number; y: number }[]): Promise<Capture> {
+	const seen = new Set<string>()
+	const boxes: Box[] = []
+	for (const p of Array.isArray(points) ? points : []) {
+		const i = Math.floor(Number(p.x) / CHUNK_UNITS)
+		const j = Math.floor(Number(p.y) / CHUNK_UNITS)
+		if (!Number.isFinite(i) || !Number.isFinite(j)) continue
+		const key = `${i}_${j}`
+		if (seen.has(key)) continue
+		seen.add(key)
+		boxes.push(Box.From({ x: i * CHUNK_UNITS, y: j * CHUNK_UNITS, w: CHUNK_UNITS, h: CHUNK_UNITS }))
+	}
+	const vp = editor.getViewportPageBounds()
+	const view = { x: vp.x, y: vp.y, w: vp.w, h: vp.h }
+	const images: string[] = []
+	const tiles: TileMeta[] = []
+	const chunks: ChunkMeta[] = []
+	let bytes = 0
+	for (const box of boxes) {
+		const meta: TileMeta = {
+			key: `c${box.x / CHUNK_UNITS}_${box.y / CHUNK_UNITS}`,
+			x: box.x,
+			y: box.y,
+			w: box.w,
+			h: box.h,
+			kind: 'chunk',
+		}
+		const img = bytes < MAX_BYTES ? await renderTile(editor, box) : null
+		if (img && bytes + img.length <= MAX_BYTES) {
+			bytes += img.length
+			images.push(img)
+			tiles.push(meta)
+			chunks.push({ ...meta, status: 'sent' })
+		} else {
+			chunks.push({ ...meta, status: 'empty' })
+		}
+	}
+	lastCaptureChunks = chunks
+	return { images, tiles, view, chunks }
+}
+
 function loadPref<T>(key: string, fallback: T): T {
 	try {
 		const s = localStorage.getItem(key)
@@ -351,7 +395,11 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 					body: JSON.stringify(payload),
 				})
 				const raw = await res.text()
-				let d: { answer?: string; usage?: unknown; toolCall?: { args?: { mode?: string } } } = {}
+				let d: {
+					answer?: string
+					usage?: unknown
+					toolCall?: { name?: string; args?: { mode?: string; points?: { x: number; y: number }[] } }
+				} = {}
 				try {
 					d = raw ? JSON.parse(raw) : {}
 				} catch {
@@ -367,12 +415,17 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				}
 				if (d.usage) setUsage((u) => addUsage(u, d.usage))
 				if (d.toolCall) {
-					let mode: CaptureMode =
-						d.toolCall.args && d.toolCall.args.mode === 'overview' ? 'overview' : 'tiles'
-					if (downgraded) mode = 'overview'
 					let cap: Capture = { images: [], tiles: [], view: { x: 0, y: 0, w: 0, h: 0 }, chunks: [] }
 					try {
-						if (editor) cap = await captureView(editor, mode)
+						if (editor) {
+							if (d.toolCall.name === 'read_chunks' && d.toolCall.args && Array.isArray(d.toolCall.args.points)) {
+								cap = await captureChunksAt(editor, d.toolCall.args.points)
+							} else {
+								const mode: CaptureMode =
+									d.toolCall.args && d.toolCall.args.mode === 'overview' ? 'overview' : 'tiles'
+								cap = await captureView(editor, downgraded ? 'overview' : mode)
+							}
+						}
 					} catch {
 						/* ignore capture errors */
 					}
