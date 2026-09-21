@@ -601,6 +601,15 @@ app.get('/api/agent/history', async (req) => {
 	const messages = agentDb
 		.prepare('SELECT id, role, content, created_at FROM agent_messages WHERE room_id=? ORDER BY id')
 		.all(room)
+		// The hidden <memo> memory stays in the DB (so the model keeps it), but must
+		// NEVER be exposed to the UI — strip it from assistant messages here too.
+		.map((m) => ({
+			...m,
+			content:
+				m.role === 'assistant'
+					? String(m.content).replace(/<memo>[\s\S]*?<\/memo>/gi, '').trim() || '(reponse vide)'
+					: m.content,
+		}))
 	return {
 		messages,
 		provider: AGENT_PROVIDER,
