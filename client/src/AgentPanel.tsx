@@ -114,9 +114,25 @@ async function renderTile(editor: Editor, box: Box): Promise<string | null> {
 // the regions that changed since the previous message instead of the whole view.
 const sentSigs = new Map<string, string>()
 
+// Snapshot of the last capture: what the agent currently has in its "image reading
+// memory" (chunks + their status). Shown only in the hidden "mémoire lecture image".
+let lastCaptureChunks: ChunkMeta[] = []
+
 type Box4 = { x: number; y: number; w: number; h: number }
 type TileMeta = Box4 & { key: string; kind: 'overview' | 'chunk' }
 type ChunkMeta = TileMeta & { status: 'sent' | 'unchanged' | 'empty' | 'not-attached' }
+const STATUS_LABEL: Record<ChunkMeta['status'], string> = {
+	sent: 'envoyée',
+	unchanged: 'inchangée (en mémoire)',
+	empty: 'vide',
+	'not-attached': 'non jointe',
+}
+const STATUS_COLOR: Record<ChunkMeta['status'], string> = {
+	sent: '#16a34a',
+	unchanged: '#6b7280',
+	empty: '#9ca3af',
+	'not-attached': '#d97706',
+}
 export type Capture = { images: string[]; tiles: TileMeta[]; view: Box4; chunks: ChunkMeta[] }
 
 // Returns the images to attach PLUS a manifest describing, in board coordinates:
@@ -172,6 +188,7 @@ async function captureView(editor: Editor, mode: CaptureMode): Promise<Capture> 
 			chunks.push({ ...meta, status: 'empty' })
 		}
 	}
+	lastCaptureChunks = chunks
 	return { images, tiles: sentTiles, view, chunks }
 }
 
@@ -238,6 +255,8 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 	const [busy, setBusy] = useState(false)
 	const [configured, setConfigured] = useState(true)
 	const [usage, setUsage] = useState<UsageTotals>({ prompt: 0, completion: 0, cost: 0 })
+	// Hidden by default: the agent's "image reading memory" (visible debug/info panel).
+	const [showMemory, setShowMemory] = useState(false)
 	const listRef = useRef<HTMLDivElement>(null)
 
 	// Floating window geometry (draggable + resizable), persisted locally.
@@ -470,10 +489,33 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 						{busy ? '…' : '↑'}
 					</button>
 				</div>
+				{showMemory && (
+					<div style={memoryListStyle}>
+						{lastCaptureChunks.length === 0 && (
+							<div style={{ color: '#999' }}>Aucune tuile en mémoire pour l'instant.</div>
+						)}
+						{lastCaptureChunks.map((c, i) => (
+							<div key={i} style={memoryRowStyle}>
+								<span>
+									{c.kind === 'overview'
+										? "vue d'ensemble"
+										: `tuile x ${Math.round(c.x)}..${Math.round(c.x + c.w)}, y ${Math.round(
+												c.y
+											)}..${Math.round(c.y + c.h)}`}
+								</span>
+								<span style={{ color: STATUS_COLOR[c.status] }}>{STATUS_LABEL[c.status]}</span>
+							</div>
+						))}
+					</div>
+				)}
 				<div style={footerStyle}>
 					<span>{(usage.prompt + usage.completion).toLocaleString('fr-FR')} tokens</span>
 					<span style={{ opacity: 0.5 }}>·</span>
 					<span title="Estimation de coût (deepseek-flash)">~${usage.cost.toFixed(4)}</span>
+					<span style={{ flex: 1 }} />
+					<button onClick={() => setShowMemory((v) => !v)} style={memoryToggleStyle}>
+						🧠 mémoire lecture image {showMemory ? '▲' : '▼'}
+					</button>
 				</div>
 				<div style={resizeHandleStyle} onMouseDown={onResizeStart} title="Redimensionner" />
 			</div>
@@ -642,6 +684,35 @@ const footerStyle: React.CSSProperties = {
 	fontSize: 11,
 	color: '#888',
 	flexShrink: 0,
+}
+
+const memoryToggleStyle: React.CSSProperties = {
+	border: 'none',
+	background: 'none',
+	color: '#6b7280',
+	fontSize: 11,
+	cursor: 'pointer',
+	padding: 0,
+}
+
+const memoryListStyle: React.CSSProperties = {
+	maxHeight: 170,
+	overflowY: 'auto',
+	borderTop: '1px solid #f0f0f0',
+	background: '#fbfbfd',
+	padding: '6px 10px',
+	fontSize: 11,
+	color: '#555',
+	display: 'flex',
+	flexDirection: 'column',
+	gap: 3,
+	flexShrink: 0,
+}
+
+const memoryRowStyle: React.CSSProperties = {
+	display: 'flex',
+	justifyContent: 'space-between',
+	gap: 8,
 }
 
 const resizeHandleStyle: React.CSSProperties = {
