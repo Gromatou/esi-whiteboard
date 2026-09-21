@@ -9,6 +9,35 @@
 
 ---
 
+## Pourquoi cet outil ?
+
+L'idée est un **complément à Discord** pour le travail à plusieurs (cours, TP, révisions) :
+
+- **Fini les partages d'écran et les streams.** On ouvre un tableau partagé et **chacun
+  voit en temps réel** ce que les autres écrivent (avec le curseur et le pseudo de chaque
+  personne).
+- **On travaille les équations ensemble.** Chacun écrit à la main (stylet) ou tape du
+  texte ; tout le monde voit la même chose au même moment, sans rien avoir à diffuser.
+- **L'IA aide et corrige.** En plus des humains, un assistant IA regarde la vue et peut
+  vérifier des calculs, signaler une erreur précise ou expliquer un point bloquant —
+  comme un prof disponible à côté du tableau.
+
+Bref : un tableau blanc partagé où l'on **discute, résout et fait corriger en direct**,
+sans avoir à streamer sa fenêtre.
+
+### Ce qui n'est PAS implémenté (assumé)
+
+- **Aucun système de compte** propre à l'application : pas d'inscription, pas de mot de
+  passe, pas de gestion de profil. L'identité vient **uniquement** de Discord (OAuth).
+- **Aucune permission ni rôle** : tous ceux qui peuvent se connecter ont les mêmes
+  droits. La seule restriction possible est à la porte, via `DISCORD_GUILD_ID`
+  (un unique serveur Discord autorisé).
+- **Aucun crédit / quota d'IA par utilisateur** : l'IA est **partagée**, sans limite de
+  tokens par personne. L'usage est seulement **mesuré** (fichiers `data/usage.log` et
+  `data/usage-totals.txt`) pour information.
+
+---
+
 ## Sommaire
 
 - [Fonctionnalités](#fonctionnalités)
