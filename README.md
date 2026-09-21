@@ -363,8 +363,43 @@ cat /opt/tldraw/data/usage-totals.txt   # usage par pseudo
 
 ---
 
-## Licence
+## Licence & conformité tldraw
 
-Le code de ce dépôt est fourni tel quel. tldraw est distribué sous sa propre licence
-(voir le fork [`Gromatou/tldraw`](https://github.com/Gromatou/tldraw)) : **vérifiez la
-licence tldraw avant tout usage en production**.
+**Important.** tldraw n'est *pas* open-source : le SDK est distribué sous la
+[« tldraw license »](https://github.com/tldraw/tldraw/blob/main/LICENSE.md), une licence
+propriétaire. Ce que cela implique pour ce dépôt et ton déploiement :
+
+### Autorisé gratuitement
+- Utiliser le SDK en **développement / test / staging**.
+- **Modifier** le logiciel et le **regrouper** dans ta propre application (c'est le cas ici).
+- Proposer tes modifications à tldraw.
+
+### Exigé / interdit
+- **Ne pas l'utiliser en production** (serveur accessible à des utilisateurs finaux ou au
+  public) **sans clé de licence**.
+- Ne pas désactiver/altérer l'**enforcement de la clé de licence**, ni retirer les mentions
+  de copyright.
+- Ne pas redistribuer tldraw (ou une version modifiée) comme **produit autonome** : il doit
+  faire partie d'une application (ici `esi-whiteboard` = serveur + app, pas « tldraw »).
+- **Inclure une copie verbatim de la licence** dans toute distribution → voir
+  [`LICENSE-tldraw.md`](./LICENSE-tldraw.md) (présent dans ce dépôt).
+- Respecter la [trademark policy](https://github.com/tldraw/tldraw/blob/main/TRADEMARKS.md).
+
+### En pratique
+- **Développer / forker / publier ce code : OK** sous ces conditions.
+- **Exploiter l'instance publique** : il faut une **clé de licence tldraw**
+  (<https://tldraw.dev/pricing>), fournie au **build** du client :
+  ```bash
+  # client/.env  (ou variable d'environnement au build)
+  VITE_TLDRAW_LICENSE_KEY=tldraw-xxxxxxxx
+  npm run build
+  ```
+  Sans clé, le SDK tldraw **affiche un filigrane** (« Made with tldraw ») en production —
+  c'est l'enforcement technique de tldraw. **Ne cherche pas à le retirer.**
+- Le client lit déjà cette variable : `App.tsx` →
+  `licenseKey={import.meta.env.VITE_TLDRAW_LICENSE_KEY}`.
+
+> Ceci n'est pas un conseil juridique. Pour un usage commercial ou en cas de doute,
+> contacte tldraw (sales@tldraw.com).
+
+Le code de ce dépôt (hors SDK tldraw) est fourni tel quel.
