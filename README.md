@@ -12,6 +12,8 @@
 ## Pourquoi cet outil ?
 
 L'idée est un **complément à Discord** pour le travail à plusieurs (cours, TP, révisions) :
+un espace **persistant** où l'on écrit **en temps réel**, où **l'on range ses fichiers**,
+et où **l'IA aide**.
 
 - **Fini les partages d'écran et les streams.** On ouvre un tableau partagé et **chacun
   voit en temps réel** ce que les autres écrivent (avec le curseur et le pseudo de chaque
@@ -22,8 +24,22 @@ L'idée est un **complément à Discord** pour le travail à plusieurs (cours, T
   vérifier des calculs, signaler une erreur précise ou expliquer un point bloquant —
   comme un prof disponible à côté du tableau.
 
-Bref : un tableau blanc partagé où l'on **discute, résout et fait corriger en direct**,
-sans avoir à streamer sa fenêtre.
+### Un espace qui persiste (et qui sert de stockage)
+
+- **Les liens sont permanents.** Un tableau vit à une URL stable : `/<nom>`. Il est
+  **sauvegardé définitivement** à cette adresse (un fichier par tableau côté serveur) —
+  pas besoin de créer un compte, pas de tableau qui « expire ».
+- **C'est aussi un espace de stockage de fichiers.** Les **PDF importés, images et
+  vidéos** sont conservés avec le tableau (pages PDF rendues en images haute résolution,
+  assets sur le disque serveur).
+- **On peut revenir des jours plus tard.** On rouvre le même lien et on **retrouve tout** :
+  les tracés, les équations, les fichiers, l'historique de discussion avec l'IA. On peut
+  **relire** ce qui a été fait et **reprendre le travail** là où il s'était arrêté.
+- **Toujours en temps réel.** À tout moment, plusieurs personnes peuvent rouvrir le même
+  lien et continuer ensemble, en direct — comme si le tableau n'avait jamais été fermé.
+
+Bref : un tableau blanc partagé (et durable) où l'on **discute, range, résout, relit et
+fait corriger en direct**, sans jamais avoir à streamer sa fenêtre.
 
 ### Ce qui n'est PAS implémenté (assumé)
 
