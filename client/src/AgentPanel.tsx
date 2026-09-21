@@ -196,6 +196,52 @@ function resetSentSigs() {
 	sentSigs.clear()
 }
 
+// ---- keep the tab awake while the agent works -------------------------------
+// Browsers throttle then FREEZE background tabs (JS paused, rAF stopped). Our agent
+// needs the page (it renders the chunks with editor.toImage), so while a turn is
+// running we hold a Web Lock (Chrome won't freeze a tab holding a lock) + a screen
+// Wake Lock. Result: switching tabs no longer interrupts the agent.
+let releaseWebLock: (() => void) | null = null
+let screenWakeLock: { release: () => Promise<void> } | null = null
+function holdAwake() {
+	try {
+		navigator.locks
+			?.request(
+				'esi-whiteboard-agent',
+				() =>
+					new Promise<void>((res) => {
+						releaseWebLock = res
+					})
+			)
+			.catch(() => {})
+	} catch {
+		/* Web Locks unsupported */
+	}
+	try {
+		type WakeLockNav = {
+			wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> }
+		}
+		;(navigator as unknown as WakeLockNav).wakeLock
+			?.request('screen')
+			.then((w) => {
+				screenWakeLock = w
+			})
+			.catch(() => {})
+	} catch {
+		/* Wake Lock unsupported */
+	}
+}
+function releaseAwake() {
+	try {
+		releaseWebLock?.()
+	} catch {}
+	releaseWebLock = null
+	try {
+		screenWakeLock?.release()
+	} catch {}
+	screenWakeLock = null
+}
+
 // Force the (re)reading of chunks given their numbers (i, j): chunk (i,j) is the
 // 450x450 area at x=i*450, y=j*450. Used by the `read_chunks` tool, bypassing the
 // incremental cache (always re-renders, even if the chunk is already "in memory").
@@ -387,6 +433,8 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 		if (!text || busy) return
 		setInput('')
 		setBusy(true)
+		// Prevent the browser from freezing/throttling this tab during the turn.
+		holdAwake()
 		setMessages((m) => [...m, { role: 'user', content: text }])
 		try {
 			let payload: Record<string, unknown> = { room: roomId, prompt: text }
@@ -460,6 +508,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 		} catch (e) {
 			setMessages((m) => [...m, { role: 'assistant', content: `⚠️ ${(e as Error).message}` }])
 		} finally {
+			releaseAwake()
 			setBusy(false)
 		}
 	}
