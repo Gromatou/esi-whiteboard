@@ -6,7 +6,16 @@
 
 Un tableau blanc en ligne, **auto-hébergé**, sur lequel on dessine/écrit, avec un
 **assistant IA** qui peut regarder ce qu'on a écrit pour aider (vérifier des calculs,
-expliquer). Connexion via **Discord**.
+expliquer).
+
+C'est conçu comme un **complément à un serveur Discord** (une **promo**, une **classe**,
+un **groupe de travail**) : on y ouvre des tableaux entre membres, on y range des
+documents (PDF, images), et on y travaille **en temps réel**. Les liens des tableaux sont
+**permanents** : on peut rouvrir des jours plus tard pour **relire** et **reprendre**.
+
+> 🔑 **La connexion Discord est obligatoire.** C'est la porte d'entrée : elle garantit
+> qu'on sait **qui** écrit, qui utilise l'IA (partagée) et qui dépose des fichiers sur le
+> serveur. Il n'y a **pas d'accès anonyme**.
 
 ## Installation en 5 minutes
 

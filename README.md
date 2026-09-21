@@ -24,6 +24,25 @@ et où **l'IA aide**.
   vérifier des calculs, signaler une erreur précise ou expliquer un point bloquant —
   comme un prof disponible à côté du tableau.
 
+### Le login Discord est la base (obligatoire)
+
+L'accès passe **obligatoirement** par **Discord** (OAuth). Ce n'est pas un détail :
+c'est **ce qui donne confiance** dans l'usage de l'outil.
+
+- **On sait qui écrit.** Chaque trait, chaque message à l'IA, chaque fichier déposé est
+  rattaché à une **identité Discord réelle** (pseudo affiché sur le tableau et près du
+  curseur).
+- **Un espace de confiance.** Comme l'IA est **partagée** (aucun quota par personne) et
+  que le serveur **stocke les fichiers**, il faut savoir **à qui** on ouvre. Le login
+  Discord sert de porte d'entrée.
+- **C'est prévu pour UN serveur Discord.** L'outil est conçu comme un **complément à un
+  serveur Discord** : une **promo**, une **classe**, un **groupe de travail**. On y ouvre
+  des tableaux entre membres, on y range les documents, et l'IA aide tout le monde.
+
+Il n'y a **aucun accès anonyme** : sans login Discord, pas de tableau. La variable
+`DISCORD_GUILD_ID` permet en plus de **verrouiller l'accès aux seuls membres de ton
+serveur**.
+
 ### Un espace qui persiste (et qui sert de stockage)
 
 - **Les liens sont permanents.** Un tableau vit à une URL stable : `/<nom>`. Il est
@@ -43,11 +62,12 @@ fait corriger en direct**, sans jamais avoir à streamer sa fenêtre.
 
 ### Ce qui n'est PAS implémenté (assumé)
 
-- **Aucun système de compte** propre à l'application : pas d'inscription, pas de mot de
-  passe, pas de gestion de profil. L'identité vient **uniquement** de Discord (OAuth).
-- **Aucune permission ni rôle** : tous ceux qui peuvent se connecter ont les mêmes
-  droits. La seule restriction possible est à la porte, via `DISCORD_GUILD_ID`
-  (un unique serveur Discord autorisé).
+- **Aucun système de compte propre à l'application** : c'est **volontaire** — l'identité
+  vient **exclusivement** de **Discord**. Le login Discord est **obligatoire**
+  (pas d'inscription, pas de mot de passe, pas d'accès anonyme).
+- **Aucune permission ni rôle fins** : tous les membres connectés ont les mêmes droits.
+  La seule restriction possible est à la porte, via `DISCORD_GUILD_ID` (l'unique serveur
+  Discord autorisé).
 - **Aucun crédit / quota d'IA par utilisateur** : l'IA est **partagée**, sans limite de
   tokens par personne. L'usage est seulement **mesuré** (fichiers `data/usage.log` et
   `data/usage-totals.txt`) pour information.
@@ -337,7 +357,7 @@ Toutes les variables sont dans `.env` (voir `.env.example`) :
 | `DATA_DIR` | dossier de données (rooms, assets, agent, usage) |
 | `SESSION_SECRET` | secret de signature du cookie de session (`openssl rand -hex 32`) |
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | OAuth2 Discord |
-| `DISCORD_GUILD_ID` | (optionnel) restreint l'accès aux membres du serveur |
+| `DISCORD_GUILD_ID` | **recommandé** : restreint l'accès aux seuls membres de ton serveur Discord (promo/classe/groupe) |
 | `AGENT_PROVIDER` | `deepseek` (défaut), `openai`, `anthropic` ou `google` |
 | `AGENT_API_KEY` | clé API du fournisseur IA |
 | `AGENT_MODEL` | `deepseek-flash` (multimodal + tool-calling) |
