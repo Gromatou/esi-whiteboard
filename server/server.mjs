@@ -601,15 +601,18 @@ app.get('/api/agent/history', async (req) => {
 	const messages = agentDb
 		.prepare('SELECT id, role, content, created_at FROM agent_messages WHERE room_id=? ORDER BY id')
 		.all(room)
-		// The hidden <memo> memory stays in the DB (so the model keeps it), but must
-		// NEVER be exposed to the UI — strip it from assistant messages here too.
-		.map((m) => ({
-			...m,
-			content:
-				m.role === 'assistant'
-					? String(m.content).replace(/<memo>[\s\S]*?<\/memo>/gi, '').trim() || '(reponse vide)'
-					: m.content,
-		}))
+		// The hidden <memo> memory stays in the DB (so the model keeps it), but is NOT
+		// inlined in the chat: we strip it from `content` and expose it as `memo`.
+		.map((m) => {
+			const raw = String(m.content || '')
+			const memoMatch = raw.match(/<memo>([\s\S]*?)<\/memo>/i)
+			return {
+				...m,
+				content:
+					m.role === 'assistant' ? raw.replace(/<memo>[\s\S]*?<\/memo>/gi, '').trim() || '(reponse vide)' : m.content,
+				memo: m.role === 'assistant' && memoMatch ? memoMatch[1].trim() : undefined,
+			}
+		})
 	return {
 		messages,
 		provider: AGENT_PROVIDER,
@@ -705,10 +708,13 @@ app.post('/api/agent/ask', async (req, reply) => {
 		}
 		const answer = content || '(reponse vide)'
 		// Store the FULL text (with <memo>...) so the model keeps its memory next turn,
-		// but never SHOW the memo block to the user.
+		// but never SHOW the memo block in the chat. We DO return it separately so the
+		// UI's hidden "mémoire lecture image" panel can display it on demand.
 		insert.run(room, 'assistant', answer)
+		const memoMatch = answer.match(/<memo>([\s\S]*?)<\/memo>/i)
+		const memo = memoMatch ? memoMatch[1].trim() : ''
 		const visible = answer.replace(/<memo>[\s\S]*?<\/memo>/gi, '').trim()
-		return { answer: visible || '(reponse vide)', usage: usage || null }
+		return { answer: visible || '(reponse vide)', memo, usage: usage || null }
 	} catch (e) {
 		const msg = `⚠️ ${e.message}`
 		insert.run(room, 'assistant', msg)

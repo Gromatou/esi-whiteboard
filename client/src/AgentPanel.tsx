@@ -6,7 +6,7 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { agentPanel, useAgentPanelOpen } from './agentPanelStore'
 
-type Msg = { id?: number; role: 'user' | 'assistant' | 'system'; content: string; created_at?: string }
+type Msg = { id?: number; role: 'user' | 'assistant' | 'system'; content: string; created_at?: string; memo?: string }
 
 // DeepSeek pricing (USD per 1M tokens), used only to give the user a rough estimate.
 const PRICE_IN = 0.22
@@ -301,6 +301,8 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 	const [usage, setUsage] = useState<UsageTotals>({ prompt: 0, completion: 0, cost: 0 })
 	// Hidden by default: the agent's "image reading memory" (visible debug/info panel).
 	const [showMemory, setShowMemory] = useState(false)
+	// The model's hidden text memory of the tiles (<memo>), shown only in that panel.
+	const [modelMemo, setModelMemo] = useState('')
 	const listRef = useRef<HTMLDivElement>(null)
 
 	// Floating window geometry (draggable + resizable), persisted locally.
@@ -329,6 +331,8 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 			.then((d) => {
 				setMessages(d.messages || [])
 				if (typeof d.configured === 'boolean') setConfigured(d.configured)
+				const last = (d.messages || []).filter((m: Msg) => m.role === 'assistant' && m.memo).pop()
+				if (last?.memo) setModelMemo(last.memo)
 			})
 			.catch(() => {})
 	}, [roomId])
@@ -397,6 +401,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				const raw = await res.text()
 				let d: {
 					answer?: string
+					memo?: string
 					usage?: unknown
 					toolCall?: { id?: string; name?: string; arguments?: string; reasoningContent?: string }
 				} = {}
@@ -414,6 +419,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 					break
 				}
 				if (d.usage) setUsage((u) => addUsage(u, d.usage))
+				if (d.memo) setModelMemo(d.memo)
 				if (d.toolCall) {
 					// The server sends `arguments` as a JSON string — parse it (do NOT read `args`).
 					let args: { mode?: string; chunks?: { i: number; j: number }[] } = {}
@@ -550,6 +556,13 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				</div>
 				{showMemory && (
 					<div style={memoryListStyle}>
+						<div style={{ fontWeight: 600, color: '#444' }}>🧠 Mémoire texte du modèle</div>
+						{modelMemo ? (
+							<div style={{ whiteSpace: 'pre-wrap', color: '#555' }}>{modelMemo}</div>
+						) : (
+							<div style={{ color: '#999' }}>Vide pour l'instant.</div>
+						)}
+						<div style={{ fontWeight: 600, color: '#444', marginTop: 8 }}>🖼️ Tuiles en mémoire</div>
 						{lastCaptureChunks.length === 0 && (
 							<div style={{ color: '#999' }}>Aucune tuile en mémoire pour l'instant.</div>
 						)}
@@ -558,9 +571,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 								<span>
 									{c.kind === 'overview'
 										? "vue d'ensemble"
-										: `tuile x ${Math.round(c.x)}..${Math.round(c.x + c.w)}, y ${Math.round(
-												c.y
-											)}..${Math.round(c.y + c.h)}`}
+										: `chunk (${Math.round(c.x / CHUNK_UNITS)},${Math.round(c.y / CHUNK_UNITS)})`}
 								</span>
 								<span style={{ color: STATUS_COLOR[c.status] }}>{STATUS_LABEL[c.status]}</span>
 							</div>
