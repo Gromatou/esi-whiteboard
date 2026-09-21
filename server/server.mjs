@@ -433,6 +433,11 @@ async function askVisionModel(prompt, imageDataUrls = [], history = [], manifest
 // bodyLimit only applies to parsed bodies (JSON); uploads use a raw stream parser
 // with no size limit. 1 GiB is effectively unlimited for the small JSON payloads.
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 * 1024 })
+// Always answer JSON: if a handler throws (or the body is too large), the client must
+// never receive HTML/empty — that is what produced "JSON.parse: unexpected character".
+app.setErrorHandler((err, req, reply) => {
+	reply.code(err.statusCode || 500).send({ error: String((err && err.message) || err) })
+})
 await app.register(websocketPlugin)
 // Serve the built client. @fastify/static's default wildcard route handles any
 // path under '/' and falls through to the notFound handler (SPA) when missing.

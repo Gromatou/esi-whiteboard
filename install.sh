@@ -68,7 +68,15 @@ else
 	log ".env déjà présent, inchangé"
 fi
 
-# --- 4. systemd --------------------------------------------------------------
+# --- swap (marge mémoire pour les gros envois d'images de l'agent) ---
+if ! swapon --show 2>/dev/null | grep -q swap; then
+	log "Ajout d'un swap 2G"
+	fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+	chmod 600 /swapfile; mkswap /swapfile >/dev/null; swapon /swapfile
+	grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# --- systemd --------------------------------------------------------------
 log "Service systemd tldraw"
 cat > /etc/systemd/system/tldraw.service <<EOF
 [Unit]
@@ -82,7 +90,7 @@ EnvironmentFile=${APP_DIR}/.env
 ExecStart=/usr/bin/node ${APP_DIR}/server.mjs
 Restart=always
 RestartSec=5
-MemoryMax=400M
+MemoryMax=750M
 StandardOutput=journal
 StandardError=journal
 

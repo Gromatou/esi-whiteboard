@@ -41,7 +41,7 @@ const CHUNK_UNITS = 450 // fixed square chunk size (board units), anchored at (0
 // We also stop early if the payload would reach the 48 MiB request-body limit.
 const MAX_TILES = 600 // max tiles (+1 overview image)
 const MAX_UPSCALE = 4
-const MAX_BYTES = 45 * 1024 * 1024 // base64 char budget (< 48 MiB body limit)
+const MAX_BYTES = 200 * 1024 * 1024 // client-side base64 budget (200 MB)
 
 function shapesIn(editor: Editor, box: { minX: number; maxX: number; minY: number; maxY: number }) {
 	return editor.getCurrentPageShapesSorted().filter((shape) => {
@@ -323,17 +323,34 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 		setMessages((m) => [...m, { role: 'user', content: text }])
 		try {
 			let payload: Record<string, unknown> = { room: roomId, prompt: text }
+			// If a screenshot request fails, retry lighter ('overview') before giving up.
+			let downgraded = false
 			for (let round = 0; round < 4; round++) {
 				const res = await fetch('/api/agent/ask', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
 				})
-				const d = await res.json()
+				const raw = await res.text()
+				let d: { answer?: string; usage?: unknown; toolCall?: { args?: { mode?: string } } } = {}
+				try {
+					d = raw ? JSON.parse(raw) : {}
+				} catch {
+					// Never choke on a non-JSON body (proxy 413/502, empty): explain instead.
+					setMessages((m) => [
+						...m,
+						{
+							role: 'assistant',
+							content: `⚠️ Réponse inattendue du serveur (${res.status}). Réessaie, ou zoome un peu (moins d'images à envoyer).`,
+						},
+					])
+					break
+				}
 				if (d.usage) setUsage((u) => addUsage(u, d.usage))
 				if (d.toolCall) {
-					const mode: CaptureMode =
+					let mode: CaptureMode =
 						d.toolCall.args && d.toolCall.args.mode === 'overview' ? 'overview' : 'tiles'
+					if (downgraded) mode = 'overview'
 					let cap: Capture = { images: [], tiles: [], view: { x: 0, y: 0, w: 0, h: 0 }, chunks: [] }
 					try {
 						if (editor) cap = await captureView(editor, mode)
@@ -341,6 +358,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 						/* ignore capture errors */
 					}
 					payload = { room: roomId, toolResult: { toolCall: d.toolCall, ...cap } }
+					downgraded = true
 					setMessages((m) => [
 						...m,
 						{
