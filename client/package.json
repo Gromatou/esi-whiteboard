@@ -1,0 +1,27 @@
+{
+	"name": "tldraw-client",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "vite build"
+	},
+	"dependencies": {
+		"@tldraw/sync": "5.4.2",
+		"katex": "^0.16.47",
+		"pdfjs-dist": "^6.3.289",
+		"react": "^19.2.1",
+		"react-dom": "^19.2.1",
+		"react-markdown": "^10.1.0",
+		"rehype-katex": "^7.0.1",
+		"remark-gfm": "^4.0.1",
+		"remark-math": "^6.0.0",
+		"tldraw": "5.4.2"
+	},
+	"devDependencies": {
+		"@types/react": "^19.2.7",
+		"@types/react-dom": "^19.2.3",
+		"@vitejs/plugin-react": "^6.0.1",
+		"typescript": "^5.8.3",
+		"vite": "^8.0.16"
+	}
+}
