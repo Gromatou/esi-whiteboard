@@ -4,8 +4,7 @@
 > avec **authentification Discord**, **liens permanents**, **stockage persistant**
 > (tableaux + fichiers) et un **assistant à vision** qui lit ce que tu écris.
 
-> ⚡ **Vibe codé avec DeepSeek 4.1.** L'intégralité de ce dépôt (serveur, client,
-> agent, doc) a été écrite en pair-programmation avec DeepSeek 4.1.
+> ⚡ Vibe codé avec DeepSeek 4.1
 
 ---
 
