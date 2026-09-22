@@ -277,15 +277,18 @@ par million de tokens.
 
 ## Setup Discord
 
+L'authentification utilise **OAuth2 côté utilisateur** : il n'y a **aucun bot** à créer ni à
+inviter. Le serveur lit l'adhésion de l'utilisateur avec **le token de l'utilisateur**
+lui-même (scope `guilds.members.read`).
+
 ### 1. Créer l'application
 
 1. <https://discord.com/developers/applications> → **New Application**.
 2. Onglet **OAuth2** :
    - **Redirect URI** : `https://VOTRE_DOMAINE/auth/callback` (ajoutez aussi
      `http://localhost:5858/auth/callback` pour tester).
-   - Notez le **Client ID** et le **Client Secret** (onglet OAuth2 → Reset Secret).
-3. Onglet **Bot** → **Add Bot** (le bot n'a pas besoin de permissions particulières ;
-   il sert via `guilds.members.read`).
+   - Notez le **Client ID** et le **Client Secret** (bouton *Reset Secret*).
+3. C'est tout : **pas de bot, aucune permission, aucune invitation**.
 
 ### 2. Récupérer le Guild ID
 
@@ -296,18 +299,19 @@ serveur → **Copier l'identifiant du serveur**. C'est `DISCORD_GUILD_ID`.
 > seuls les membres de ce serveur peuvent se connecter. C'est ce qui fait de l'outil un
 > **complément à ton serveur Discord** (promo/classe/groupe), pas un service ouvert.
 
-### 3. Inviter le bot (pour `guilds.members.read`)
+### 3. Comment l'accès est vérifié (sans bot)
 
-URL d'invitation (remplacez `CLIENT_ID`) :
+L'app demande à l'utilisateur les scopes **`identify`** + **`guilds.members.read`**.
+Au retour (`/auth/callback`), le serveur appelle directement, **avec le token de
+l'utilisateur** :
+
 ```
-https://discord.com/oauth2/authorize?client_id=CLIENT_ID&scope=bot&permissions=0
+GET https://discord.com/api/users/@me/guilds/{DISCORD_GUILD_ID}/member
 ```
-Le bot doit être **sur le serveur** pour pouvoir lire les pseudos via `guilds.members.read`.
 
-### 4. Scopes utilisés par l'app
-
-`identify` + `guilds.members.read` → l'app récupère ton pseudo de serveur
-(`nick`) sinon ton nom global, sinon ton username.
+- **200** → l'utilisateur est membre → on garde son pseudo de serveur (`nick`), sinon
+  son nom global, sinon son username.
+- **404** → il n'est **pas** membre de ce serveur → connexion **refusée** (403).
 
 ---
 
@@ -392,7 +396,7 @@ cat /opt/tldraw/data/usage-totals.txt   # usage par pseudo
 | Symptôme | Piste |
 |---|---|
 | `401` partout | cookie de session absent/expiré → se reconnecter ; vérifier `APP_URL` = URL HTTPS réelle |
-| Login Discord « not a member » | le bot n'est pas sur le serveur, ou `DISCORD_GUILD_ID` incorrect |
+| Login Discord « not a member » | l'utilisateur n'est pas membre du serveur, ou `DISCORD_GUILD_ID` incorrect |
 | L'agent ne voit rien | il n'a pas appelé `request_view`, ou la clé API est absente (`AGENT_API_KEY`) |
 | Réponse 400 du modèle après un tool call | `reasoning_content` non rejoué (bug de version du serveur) |
 | Images « illisibles » par l'agent | zone trop grande pour 600 chunks → zoomer, ou augmenter le budget |
