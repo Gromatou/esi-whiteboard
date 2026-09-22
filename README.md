@@ -1,8 +1,8 @@
 # esi-whiteboard
 
 > Tableau blanc collaboratif **auto-hébergé** basé sur [tldraw](https://tldraw.dev),
-> avec **auth Discord**, **persistance par tableau**, **import PDF**, et un
-> **agent IA** (DeepSeek) qui lit ce que tu écris au stylet.
+> avec **authentification Discord**, **liens permanents**, **stockage persistant**
+> (tableaux + fichiers) et un **assistant à vision** (DeepSeek) qui lit ce que tu écris.
 
 > ⚡ **Vibe codé avec DeepSeek 4.1.** L'intégralité de ce dépôt (serveur, client,
 > agent, doc) a été écrite en pair-programmation avec DeepSeek 4.1.
@@ -13,14 +13,14 @@
 
 L'idée est un **complément à Discord** pour le travail à plusieurs (cours, TP, révisions) :
 un espace **persistant** où l'on écrit **en temps réel**, où **l'on range ses fichiers**,
-et où **l'IA aide**.
+et où un **assistant** aide.
 
 - **Fini les partages d'écran et les streams.** On ouvre un tableau partagé et **chacun
   voit en temps réel** ce que les autres écrivent (avec le curseur et le pseudo de chaque
   personne).
 - **On travaille les équations ensemble.** Chacun écrit à la main (stylet) ou tape du
   texte ; tout le monde voit la même chose au même moment, sans rien avoir à diffuser.
-- **L'IA aide et corrige.** En plus des humains, un assistant IA regarde la vue et peut
+- **Un assistant aide et corrige.** En plus des humains, un assistant regarde la vue et peut
   vérifier des calculs, signaler une erreur précise ou expliquer un point bloquant —
   comme un prof disponible à côté du tableau.
 
@@ -29,15 +29,15 @@ et où **l'IA aide**.
 L'accès passe **obligatoirement** par **Discord** (OAuth). Ce n'est pas un détail :
 c'est **ce qui donne confiance** dans l'usage de l'outil.
 
-- **On sait qui écrit.** Chaque trait, chaque message à l'IA, chaque fichier déposé est
+- **On sait qui écrit.** Chaque trait, chaque message à l'assistant, chaque fichier déposé est
   rattaché à une **identité Discord réelle** (pseudo affiché sur le tableau et près du
   curseur).
-- **Un espace de confiance.** Comme l'IA est **partagée** (aucun quota par personne) et
+- **Un espace de confiance.** Comme l'assistant est **partagé** (aucun quota par personne) et
   que le serveur **stocke les fichiers**, il faut savoir **à qui** on ouvre. Le login
   Discord sert de porte d'entrée.
 - **C'est prévu pour UN serveur Discord.** L'outil est conçu comme un **complément à un
   serveur Discord** : une **promo**, une **classe**, un **groupe de travail**. On y ouvre
-  des tableaux entre membres, on y range les documents, et l'IA aide tout le monde.
+  des tableaux entre membres, on y range les documents, et l'assistant aide tout le monde.
 
 Il n'y a **aucun accès anonyme** : sans login Discord, pas de tableau. Et
 `DISCORD_GUILD_ID` est **obligatoire** : le serveur **refuse de démarrer** sans lui, et
@@ -53,7 +53,7 @@ instance à tout Discord.
   vidéos** sont conservés avec le tableau (pages PDF rendues en images haute résolution,
   assets sur le disque serveur).
 - **On peut revenir des jours plus tard.** On rouvre le même lien et on **retrouve tout** :
-  les tracés, les équations, les fichiers, l'historique de discussion avec l'IA. On peut
+  les tracés, les équations, les fichiers, l'historique de discussion avec l'assistant. On peut
   **relire** ce qui a été fait et **reprendre le travail** là où il s'était arrêté.
 - **Toujours en temps réel.** À tout moment, plusieurs personnes peuvent rouvrir le même
   lien et continuer ensemble, en direct — comme si le tableau n'avait jamais été fermé.
@@ -69,7 +69,7 @@ fait corriger en direct**, sans jamais avoir à streamer sa fenêtre.
 - **Aucune permission ni rôle fins** : tous les membres connectés ont les mêmes droits.
   La seule restriction possible est à la porte, via `DISCORD_GUILD_ID` (l'unique serveur
   Discord autorisé).
-- **Aucun crédit / quota d'IA par utilisateur** : l'IA est **partagée**, sans limite de
+- **Aucun crédit / quota par utilisateur** : l'assistant est **partagé**, sans limite de
   tokens par personne. L'usage est seulement **mesuré** (fichiers `data/usage.log` et
   `data/usage-totals.txt`) pour information.
 
@@ -98,7 +98,7 @@ fait corriger en direct**, sans jamais avoir à streamer sa fenêtre.
   Rien à faire, un tableau créé à `/<nom>` est sauvegardé définitivement à cette URL.
 - **Auth Discord** : login OAuth2 restreint à un serveur (guild) optionnel.
 - **Import PDF & médias** : les PDF sont rendus en pages-images haute résolution ; images/vidéos via le handler natif de tldraw.
-- **Agent IA intégré** : panneau flottant, réponses en markdown + KaTeX.
+- **Assistant intégré** : panneau flottant, réponses en markdown + KaTeX.
   L'agent **voit ta vue** (et seulement ta vue), demande une capture quand il en a besoin.
 - **Pseudo Discord** affiché à côté du curseur.
 - **Backup quotidien** automatique (systemd timer, rétention 14 j).
@@ -116,7 +116,7 @@ fait corriger en direct**, sans jamais avoir à streamer sa fenêtre.
                  │ node server.mjs :5858│
                  │  • OAuth Discord     │
                  │  • sync tldraw (WS)  │
-                 │  • API agent IA      │
+                 │  • API assistant    │
                  │  • assets / uploads  │
                  └──────────┬───────────┘
                             │
@@ -329,7 +329,7 @@ sudo DOMAIN=whiteboard.example.com bash install.sh
 Le script installe Node 22 + nginx + certbot, copie l'app dans `/opt/tldraw`,
 build le client, crée le service systemd, le reverse proxy TLS et le backup.
 
-Ensuite, complétez `/opt/tldraw/.env` (Discord, clé IA, `APP_URL`) puis :
+Ensuite, complétez `/opt/tldraw/.env` (Discord, clé API, `APP_URL`) puis :
 
 ```bash
 sudo systemctl restart tldraw
@@ -361,7 +361,7 @@ Toutes les variables sont dans `.env` (voir `.env.example`) :
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | OAuth2 Discord |
 | `DISCORD_GUILD_ID` | **obligatoire** : serveur Discord autorisé (le serveur refuse de démarrer sans) |
 | `AGENT_PROVIDER` | `deepseek` (défaut), `openai`, `anthropic` ou `google` |
-| `AGENT_API_KEY` | clé API du fournisseur IA |
+| `AGENT_API_KEY` | clé API du modèle (DeepSeek) |
 | `AGENT_MODEL` | `deepseek-flash` (multimodal + tool-calling) |
 | `AGENT_SYSTEM_PROMPT` | (optionnel) remplace tout le prompt système |
 
@@ -394,8 +394,8 @@ cat /opt/tldraw/data/usage-totals.txt   # usage par pseudo
 |---|---|
 | `401` partout | cookie de session absent/expiré → se reconnecter ; vérifier `APP_URL` = URL HTTPS réelle |
 | Login Discord « not a member » | le bot n'est pas sur le serveur, ou `DISCORD_GUILD_ID` incorrect |
-| L'agent ne voit rien | il n'a pas appelé `request_view`, ou la clé IA est absente (`AGENT_API_KEY`) |
-| Réponse 400 côté IA après un tool call | `reasoning_content` non rejoué (bug de version du serveur) |
+| L'agent ne voit rien | il n'a pas appelé `request_view`, ou la clé API est absente (`AGENT_API_KEY`) |
+| Réponse 400 du modèle après un tool call | `reasoning_content` non rejoué (bug de version du serveur) |
 | Images « illisibles » par l'agent | zone trop grande pour 600 chunks → zoomer, ou augmenter le budget |
 | Le client ne se met pas à jour | `npm run build` puis recopier `dist/` dans `public/` |
 
