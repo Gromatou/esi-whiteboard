@@ -2,7 +2,7 @@
 
 > Tableau blanc collaboratif **auto-hébergé** basé sur [tldraw](https://tldraw.dev),
 > avec **authentification Discord**, **liens permanents**, **stockage persistant**
-> (tableaux + fichiers) et un **assistant à vision** (DeepSeek) qui lit ce que tu écris.
+> (tableaux + fichiers) et un **assistant à vision** qui lit ce que tu écris.
 
 > ⚡ **Vibe codé avec DeepSeek 4.1.** L'intégralité de ce dépôt (serveur, client,
 > agent, doc) a été écrite en pair-programmation avec DeepSeek 4.1.
@@ -140,7 +140,7 @@ Le client buildé est servi statiquement par le serveur (dossier `public/`).
 
 ### Pourquoi découper
 
-Le modèle vision de DeepSeek **réduit chaque image à ~800×800 px** avant l'inférence
+Le modèle vision **réduit chaque image à ~800×800 px** avant l'inférence
 (budget ≈ 384 tokens/image). Une seule image de toute la vue = un seul budget de 800px
 pour toute la zone → l'écriture manuscrite devient illisible.
 
@@ -176,7 +176,7 @@ Seuls les chunks réellement modifiés ou nouvellement visibles sont renvoyés.
 | `overview` (image 1) | la vue entière, **strictement limitée à l'écran** (contexte de disposition) |
 | `tile` × N | chaque chunk visible, rendu à **1600 px** (supersampling → le downscale interne 800px est net) |
 
-Nombre de chunks par appel : plafonné à **600 images** (limite DeepSeek), et par un
+Nombre de chunks par appel : plafonné à **600 images** (limite de l'API), et par un
 **budget de payload** de 45 Mo de base64 (< 48 MiB du corps de requête).
 
 ### Voile de résolution
@@ -271,7 +271,7 @@ cat /opt/tldraw/data/usage-totals.txt
 grep Alice /opt/tldraw/data/usage.log | tail
 ```
 
-Tarifs utilisés (estimation, DeepSeek) : entrée `$0,22` / cache `$0,007` / sortie `$0,66`
+Tarifs utilisés (estimation) : entrée `$0,22` / cache `$0,007` / sortie `$0,66`
 par million de tokens.
 
 ---
@@ -361,7 +361,7 @@ Toutes les variables sont dans `.env` (voir `.env.example`) :
 | `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` | OAuth2 Discord |
 | `DISCORD_GUILD_ID` | **obligatoire** : serveur Discord autorisé (le serveur refuse de démarrer sans) |
 | `AGENT_PROVIDER` | `deepseek` (défaut), `openai`, `anthropic` ou `google` |
-| `AGENT_API_KEY` | clé API du modèle (DeepSeek) |
+| `AGENT_API_KEY` | clé API du modèle |
 | `AGENT_MODEL` | `deepseek-flash` (multimodal + tool-calling) |
 | `AGENT_SYSTEM_PROMPT` | (optionnel) remplace tout le prompt système |
 
