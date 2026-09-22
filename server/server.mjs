@@ -703,6 +703,7 @@ app.post('/api/agent/ask', async (req, reply) => {
 					arguments: (tc.function && tc.function.arguments) || '{}',
 					reasoningContent: reasoningContent || '',
 				},
+				reasoningContent: reasoningContent || '',
 				usage: usage || null,
 			}
 		}
@@ -714,7 +715,7 @@ app.post('/api/agent/ask', async (req, reply) => {
 		const memoMatch = answer.match(/<memo>([\s\S]*?)<\/memo>/i)
 		const memo = memoMatch ? memoMatch[1].trim() : ''
 		const visible = answer.replace(/<memo>[\s\S]*?<\/memo>/gi, '').trim()
-		return { answer: visible || '(reponse vide)', memo, usage: usage || null }
+		return { answer: visible || '(reponse vide)', memo, reasoningContent: reasoningContent || '', usage: usage || null }
 	} catch (e) {
 		const msg = `⚠️ ${e.message}`
 		insert.run(room, 'assistant', msg)

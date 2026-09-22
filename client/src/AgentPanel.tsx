@@ -349,6 +349,9 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 	const [showMemory, setShowMemory] = useState(false)
 	// The model's hidden text memory of the tiles (<memo>), shown only in that panel.
 	const [modelMemo, setModelMemo] = useState('')
+	// The model's reasoning ("thinking") for the current turn, shown expandable.
+	const [thinking, setThinking] = useState<string[]>([])
+	const [showThinking, setShowThinking] = useState(false)
 	const listRef = useRef<HTMLDivElement>(null)
 
 	// Floating window geometry (draggable + resizable), persisted locally.
@@ -435,6 +438,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 		setBusy(true)
 		// Prevent the browser from freezing/throttling this tab during the turn.
 		holdAwake()
+		setThinking([])
 		setMessages((m) => [...m, { role: 'user', content: text }])
 		try {
 			let payload: Record<string, unknown> = { room: roomId, prompt: text }
@@ -450,6 +454,7 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				let d: {
 					answer?: string
 					memo?: string
+					reasoningContent?: string
 					usage?: unknown
 					toolCall?: { id?: string; name?: string; arguments?: string; reasoningContent?: string }
 				} = {}
@@ -468,6 +473,8 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				}
 				if (d.usage) setUsage((u) => addUsage(u, d.usage))
 				if (d.memo) setModelMemo(d.memo)
+				const reason = d.reasoningContent || d.toolCall?.reasoningContent
+				if (reason) setThinking((t) => [...t, String(reason)])
 				if (d.toolCall) {
 					// The server sends `arguments` as a JSON string — parse it (do NOT read `args`).
 					let args: { mode?: string; chunks?: { i: number; j: number }[] } = {}
@@ -577,8 +584,25 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 							</div>
 						)
 					)}
-					{busy && <div style={{ ...botMsgStyle, color: '#888' }}>…</div>}
+					{busy && <div style={{ ...botMsgStyle, color: '#888' }}>⏳ l'agent travaille…</div>}
 				</div>
+				{(busy || thinking.length > 0) && (
+					<div style={thinkingBarStyle}>
+						<button onClick={() => setShowThinking((v) => !v)} style={memoryToggleStyle}>
+							🧠 Réflexion du modèle{thinking.length ? ` (${thinking.length})` : ''} {showThinking ? '▲' : '▼'}
+						</button>
+						{busy && <span style={{ color: '#999' }}>· en cours…</span>}
+					</div>
+				)}
+				{showThinking && thinking.length > 0 && (
+					<div style={thinkingListStyle}>
+						{thinking.map((t, i) => (
+							<div key={i} style={{ whiteSpace: 'pre-wrap', marginBottom: 6 }}>
+								<strong>Étape {i + 1}.</strong> {t}
+							</div>
+						))}
+					</div>
+				)}
 				<div style={inputRowStyle}>
 					<textarea
 						value={input}
@@ -832,6 +856,29 @@ const memoryRowStyle: React.CSSProperties = {
 	display: 'flex',
 	justifyContent: 'space-between',
 	gap: 8,
+}
+
+const thinkingBarStyle: React.CSSProperties = {
+	display: 'flex',
+	alignItems: 'center',
+	gap: 6,
+	padding: '3px 10px',
+	borderTop: '1px solid #f0f0f0',
+	background: '#fafafa',
+	fontSize: 11,
+	color: '#666',
+	flexShrink: 0,
+}
+
+const thinkingListStyle: React.CSSProperties = {
+	maxHeight: 200,
+	overflowY: 'auto',
+	borderTop: '1px solid #f0f0f0',
+	background: '#f7f7fb',
+	padding: '6px 10px',
+	fontSize: 11,
+	color: '#555',
+	flexShrink: 0,
 }
 
 const resizeHandleStyle: React.CSSProperties = {
