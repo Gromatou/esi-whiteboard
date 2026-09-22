@@ -6,7 +6,13 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { agentPanel, useAgentPanelOpen } from './agentPanelStore'
 
-type Msg = { id?: number; role: 'user' | 'assistant' | 'system'; content: string; created_at?: string; memo?: string }
+type Msg = {
+	id?: number
+	role: 'user' | 'assistant' | 'system' | 'thinking'
+	content: string
+	created_at?: string
+	memo?: string
+}
 
 // DeepSeek pricing (USD per 1M tokens), used only to give the user a rough estimate.
 const PRICE_IN = 0.22
@@ -349,9 +355,6 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 	const [showMemory, setShowMemory] = useState(false)
 	// The model's hidden text memory of the tiles (<memo>), shown only in that panel.
 	const [modelMemo, setModelMemo] = useState('')
-	// The model's reasoning ("thinking") for the current turn, shown expandable.
-	const [thinking, setThinking] = useState<string[]>([])
-	const [showThinking, setShowThinking] = useState(false)
 	const listRef = useRef<HTMLDivElement>(null)
 
 	// Floating window geometry (draggable + resizable), persisted locally.
@@ -438,7 +441,6 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 		setBusy(true)
 		// Prevent the browser from freezing/throttling this tab during the turn.
 		holdAwake()
-		setThinking([])
 		setMessages((m) => [...m, { role: 'user', content: text }])
 		try {
 			let payload: Record<string, unknown> = { room: roomId, prompt: text }
@@ -474,7 +476,8 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 				if (d.usage) setUsage((u) => addUsage(u, d.usage))
 				if (d.memo) setModelMemo(d.memo)
 				const reason = d.reasoningContent || d.toolCall?.reasoningContent
-				if (reason) setThinking((t) => [...t, String(reason)])
+				// Show the reasoning INLINE in the conversation (in chronological order).
+				if (reason) setMessages((m) => [...m, { role: 'thinking', content: String(reason) }])
 				if (d.toolCall) {
 					// The server sends `arguments` as a JSON string — parse it (do NOT read `args`).
 					let args: { mode?: string; chunks?: { i: number; j: number }[] } = {}
@@ -565,7 +568,14 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 						</div>
 					)}
 					{messages.map((m, i) =>
-						m.role === 'system' ? (
+						m.role === 'thinking' ? (
+							<details key={m.id ?? i} style={thinkingMsgStyle}>
+								<summary style={{ cursor: 'pointer', color: '#666', userSelect: 'none' }}>
+									🧠 Réflexion du modèle
+								</summary>
+								<div style={{ whiteSpace: 'pre-wrap', marginTop: 6, color: '#555' }}>{m.content}</div>
+							</details>
+						) : m.role === 'system' ? (
 							<div key={m.id ?? i} style={noticeStyle}>
 								{m.content}
 							</div>
@@ -586,23 +596,6 @@ export default function AgentPanel({ editor, roomId }: { editor: Editor | null; 
 					)}
 					{busy && <div style={{ ...botMsgStyle, color: '#888' }}>⏳ l'agent travaille…</div>}
 				</div>
-				{(busy || thinking.length > 0) && (
-					<div style={thinkingBarStyle}>
-						<button onClick={() => setShowThinking((v) => !v)} style={memoryToggleStyle}>
-							🧠 Réflexion du modèle{thinking.length ? ` (${thinking.length})` : ''} {showThinking ? '▲' : '▼'}
-						</button>
-						{busy && <span style={{ color: '#999' }}>· en cours…</span>}
-					</div>
-				)}
-				{showThinking && thinking.length > 0 && (
-					<div style={thinkingListStyle}>
-						{thinking.map((t, i) => (
-							<div key={i} style={{ whiteSpace: 'pre-wrap', marginBottom: 6 }}>
-								<strong>Étape {i + 1}.</strong> {t}
-							</div>
-						))}
-					</div>
-				)}
 				<div style={inputRowStyle}>
 					<textarea
 						value={input}
@@ -858,27 +851,14 @@ const memoryRowStyle: React.CSSProperties = {
 	gap: 8,
 }
 
-const thinkingBarStyle: React.CSSProperties = {
-	display: 'flex',
-	alignItems: 'center',
-	gap: 6,
-	padding: '3px 10px',
-	borderTop: '1px solid #f0f0f0',
-	background: '#fafafa',
-	fontSize: 11,
-	color: '#666',
-	flexShrink: 0,
-}
-
-const thinkingListStyle: React.CSSProperties = {
-	maxHeight: 200,
-	overflowY: 'auto',
-	borderTop: '1px solid #f0f0f0',
+const thinkingMsgStyle: React.CSSProperties = {
+	alignSelf: 'stretch',
 	background: '#f7f7fb',
+	border: '1px solid #ececf3',
+	borderRadius: 8,
 	padding: '6px 10px',
-	fontSize: 11,
+	fontSize: 11.5,
 	color: '#555',
-	flexShrink: 0,
 }
 
 const resizeHandleStyle: React.CSSProperties = {
