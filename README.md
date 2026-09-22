@@ -277,51 +277,109 @@ par million de tokens.
 
 ## Setup Discord
 
-L'authentification utilise **OAuth2 côté utilisateur** : il n'y a **aucun bot** à créer ni à
-inviter. Le serveur lit l'adhésion de l'utilisateur avec **le token de l'utilisateur**
-lui-même (scope `guilds.members.read`).
+> 💡 **Bonne nouvelle : aucun bot à installer.** L'outil ne se connecte jamais à ton serveur
+> à ta place. Il demande simplement à chaque personne de **prouver qu'elle est membre de ton
+> serveur** en se connectant avec son compte Discord (système « OAuth2 »). C'est cette preuve
+> qui fait la confiance : on sait **qui** écrit et **qui** utilise l'assistant.
 
-### 1. Créer l'application
+### 1. Créer une « application » Discord (~5 min)
 
-1. <https://discord.com/developers/applications> → **New Application**.
-2. Onglet **OAuth2** :
-   - **Redirect URI** : `https://VOTRE_DOMAINE/auth/callback` (ajoutez aussi
-     `http://localhost:5858/auth/callback` pour tester).
-   - Notez le **Client ID** et le **Client Secret** (bouton *Reset Secret*).
-3. C'est tout : **pas de bot, aucune permission, aucune invitation**.
+1. Va sur <https://discord.com/developers/applications> (connecte-toi avec ton compte Discord).
+2. En haut à droite : **New Application** → donne un nom (ex. « Whiteboard Promo ») → accepte → **Create**.
+3. Dans la colonne de gauche, clique sur **OAuth2** — ⚠️ **pas** sur « Bot ».
+4. Section **Redirect URI** : clique **Add Redirect**, puis colle l'adresse de retour :
+   ```
+   https://TON-DOMAINE/auth/callback
+   ```
+   (remplace `TON-DOMAINE` par le tien : ex. `whiteboard.mondomaine.fr` → `https://whiteboard.mondomaine.fr/auth/callback`).
+   ➕ Pour tester en local, ajoute **aussi** `http://localhost:5858/auth/callback`.
+   Puis clique **Save Changes** (sans ça, la connexion échouera plus tard).
+5. Note deux valeurs :
+   - **Client ID** (affiché en haut de la page OAuth2) ;
+   - **Client Secret** → bouton **Reset Secret** → **Yes, do it** → **Copy**.
+     ⚠️ Le secret n'est affiché **qu'une seule fois** : copie-le tout de suite.
 
-### 2. Récupérer le Guild ID
+> 💡 **On ne touche pas à l'onglet « Bot ».** Ici on n'utilise que la page **OAuth2**
+> (connexion d'un utilisateur). Pas de bot à créer, pas de permissions, pas d'invitation.
 
-Activez le mode développeur (Paramètres Discord → Avancés), clic droit sur votre
-serveur → **Copier l'identifiant du serveur**. C'est `DISCORD_GUILD_ID`.
+### 2. Cocher les 2 scopes (les autorisations demandées)
+
+Toujours dans **OAuth2**, descends jusqu'à la section **URL Generator** et coche **exactement
+ces deux cases** dans **Scopes** :
+
+- ☑️ **`identify`**
+- ☑️ **`guilds.members.read`**
+
+C'est **ces deux-là et rien d'autre** :
+
+| Scope (case à cocher) | Ce que ça autorise (et pas plus) |
+|---|---|
+| `identify` | lire **ton** pseudo + avatar Discord |
+| `guilds.members.read` | vérifier que tu es **membre de ton serveur** et lire **ton** pseudo de serveur |
+
+> 💡 La page **URL Generator** ne sert qu'à **cocher/voir** les scopes : tu n'as **rien à
+> copier** depuis cette page. Le serveur redemande déjà ces deux scopes tout seul au moment
+> de la connexion. Si tu doutes : c'est **juste ces 2 scopes**, aucun autre.
+
+### 3. Récupérer l'identifiant du serveur (Guild ID)
+
+1. Dans Discord : **Paramètres utilisateur → Avancés → active le « Mode développeur »**.
+2. Clic droit sur **ton serveur** (dans la liste des serveurs, à gauche) → **Copier l'identifiant du serveur**.
+   C'est `DISCORD_GUILD_ID` (un long nombre).
 
 > **Obligatoire.** Le serveur **refuse de démarrer** si `DISCORD_GUILD_ID` est vide, et
 > seuls les membres de ce serveur peuvent se connecter. C'est ce qui fait de l'outil un
-> **complément à ton serveur Discord** (promo/classe/groupe), pas un service ouvert.
+> **complément à ton serveur Discord** (promo/classe/groupe), pas un service ouvert à tous.
 
-### 3. Comment l'accès est vérifié (sans bot)
+### 4. Remettre ces valeurs dans le `.env`
 
-L'app demande à l'utilisateur les scopes **`identify`** + **`guilds.members.read`**.
-Au retour (`/auth/callback`), le serveur appelle directement, **avec le token de
-l'utilisateur** :
+Sur le serveur, dans le fichier `/opt/tldraw/.env` :
+
+```ini
+DISCORD_CLIENT_ID=...        # noté à l'étape 1
+DISCORD_CLIENT_SECRET=...    # noté à l'étape 1
+DISCORD_GUILD_ID=...         # identifiant du serveur (étape 3)
+```
+
+Puis redémarre l'application : `sudo systemctl restart tldraw`.
+
+### 5. Comment la connexion est vérifiée, en coulisses (sans bot)
+
+Au clic « Se connecter avec Discord », l'app demande les scopes **`identify`** +
+**`guilds.members.read`**. Au retour (`/auth/callback`), le serveur interroge Discord
+**avec le token de l'utilisateur lui-même** :
 
 ```
 GET https://discord.com/api/users/@me/guilds/{DISCORD_GUILD_ID}/member
 ```
 
-- **200** → l'utilisateur est membre → on garde son pseudo de serveur (`nick`), sinon
-  son nom global, sinon son username.
-- **404** → il n'est **pas** membre de ce serveur → connexion **refusée** (403).
+- **200** → la personne est membre → on garde son pseudo de serveur (`nick`), sinon son nom
+  global, sinon son username.
+- **404** → elle **n'est pas** membre de ce serveur → connexion **refusée** (403).
 
 ---
 
 ## Installation
 
 ### Prérequis
-- Un serveur Debian/Ubuntu vierge (testé sur Debian 13, 1 vCPU / 1 Go RAM).
-- Un nom de domaine pointant vers l'IP (pour le TLS).
-- Une clé API DeepSeek (<https://platform.deepseek.com>).
-- Une application Discord (voir ci-dessus).
+
+> 💡 **C'est quoi « héberger » ?** Il faut une petite machine allumée en permanence (un
+> **VPS**) avec une adresse web (un **domaine**). Tout est expliqué juste en dessous — tu
+> n'as pas besoin d'être administrateur système.
+
+- **Une machine Debian ou Ubuntu vierge** — un petit **VPS** suffit (testé sur Debian 13,
+  1 vCPU / 1 Go de RAM). C'est là que tournera le tableau.
+- **Un nom de domaine** (ex. `whiteboard.mondomaine.fr`) que tu peux faire pointer vers
+  l'IP de la machine → nécessaire pour le **HTTPS** (le cadenas 🔒).
+  > 💡 Pas de domaine ? Le service gratuit [sslip.io](https://sslip.io) en fabrique un à
+  > partir de l'IP : ex. `203.0.113.5.sslip.io`.
+- **Une clé API** du modèle (<https://platform.deepseek.com>) — c'est ce qui fait marcher
+  l'assistant (vision). À créer dans « API Keys ».
+- **Une application Discord** — créée à l'étape [Setup Discord](#setup-discord) (2 minutes).
+
+> 💡 **Jamais fait de serveur ?** Tu vas taper quelques commandes dans une fenêtre noire
+> (le **terminal**), connecté à ta machine via **SSH**. Les commandes de ce guide sont
+> prêtes à **copier-coller** — remplace juste `whiteboard.example.com` par ton domaine.
 
 ### Script automatique
 
@@ -332,11 +390,18 @@ sudo DOMAIN=whiteboard.example.com bash install.sh
 Le script installe Node 22 + nginx + certbot, copie l'app dans `/opt/tldraw`,
 build le client, crée le service systemd, le reverse proxy TLS et le backup.
 
+> 💡 **Il fait tout, tu n'as rien à ajouter** (relance-le sans risque, il est rejouable).
+> À la fin, il te dira d'**éditer `.env`** : c'est la seule étape manuelle.
+
 Ensuite, complétez `/opt/tldraw/.env` (Discord, clé API, `APP_URL`) puis :
 
 ```bash
 sudo systemctl restart tldraw
 ```
+
+> 💡 `systemctl restart tldraw` = « redémarre le tableau pour prendre en compte le `.env` ».
+> Pour voir s'il tourne : `systemctl status tldraw`. Pour suivre les erreurs en direct :
+> `journalctl -u tldraw -f`.
 
 ### Manuel (résumé)
 
