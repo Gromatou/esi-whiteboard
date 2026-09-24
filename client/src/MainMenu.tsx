@@ -9,6 +9,7 @@ import {
 	TldrawUiMenuGroup,
 	TldrawUiMenuItem,
 	TldrawUiMenuSubmenu,
+	TldrawUiToolbar,
 	TldrawUiToolbarButton,
 	defaultHandleExternalFileContent,
 	useEditor,
@@ -44,12 +45,15 @@ function AiToolbarButton() {
 	)
 }
 
-/** Toolbar = default tools + AI button (inside the toolbar container so it shares the background). */
+/** Toolbar = default tools + AI button. The AI button is wrapped in a
+ *  TldrawUiToolbar (Radix Toolbar.Root) because TldrawUiToolbarButton requires one. */
 function CustomToolbar() {
 	return (
 		<DefaultToolbar>
 			<DefaultToolbarContent />
-			<AiToolbarButton />
+			<TldrawUiToolbar label="Assistant IA">
+				<AiToolbarButton />
+			</TldrawUiToolbar>
 		</DefaultToolbar>
 	)
 }
