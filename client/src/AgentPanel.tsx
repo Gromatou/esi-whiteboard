@@ -101,7 +101,13 @@ function tilesForView(editor: Editor): Tile[] {
 	return tiles
 }
 
-async function renderTile(editor: Editor, box: Box): Promise<string | null> {
+// Cache of already-rendered tile images (key + signature -> data URL): re-reading an
+// unchanged chunk is then instant (no canvas re-render, no latency).
+const imageCache = new Map<string, { sig: string; url: string }>()
+
+async function renderTile(editor: Editor, box: Box, key: string, sig: string): Promise<string | null> {
+	const cached = imageCache.get(key)
+	if (cached && cached.sig === sig) return cached.url
 	const shapes = shapesIn(editor, box)
 	if (shapes.length === 0) return null
 	const scale = Math.min(MAX_UPSCALE, TILE_PX / Math.max(box.w, box.h))
@@ -113,7 +119,9 @@ async function renderTile(editor: Editor, box: Box): Promise<string | null> {
 		pixelRatio: 1,
 		scale,
 	})
-	return await FileHelpers.blobToDataUrl(result.blob)
+	const url = await FileHelpers.blobToDataUrl(result.blob)
+	imageCache.set(key, { sig, url })
+	return url
 }
 
 // Signatures of the tiles we last sent (tile key -> signature). Lets us send ONLY
@@ -182,7 +190,7 @@ async function captureView(editor: Editor, mode: CaptureMode): Promise<Capture> 
 			continue
 		}
 		const budgetOk = images.length < MAX_TILES && bytes < MAX_BYTES
-		const img = budgetOk ? await renderTile(editor, t.box) : null
+		const img = budgetOk ? await renderTile(editor, t.box, t.key, t.sig) : null
 		if (img && bytes + img.length <= MAX_BYTES) {
 			bytes += img.length
 			images.push(img)
@@ -200,6 +208,7 @@ async function captureView(editor: Editor, mode: CaptureMode): Promise<Capture> 
 
 function resetSentSigs() {
 	sentSigs.clear()
+	imageCache.clear()
 }
 
 // ---- keep the tab awake while the agent works -------------------------------
@@ -278,7 +287,9 @@ async function captureChunks(editor: Editor, chunks: { i: number; j: number }[])
 			h: box.h,
 			kind: 'chunk',
 		}
-		const img = bytes < MAX_BYTES ? await renderTile(editor, box) : null
+		const key = `c${box.x / CHUNK_UNITS}_${box.y / CHUNK_UNITS}`
+		const sig = boxSig(editor, box)
+		const img = bytes < MAX_BYTES ? await renderTile(editor, box, key, sig) : null
 		if (img && bytes + img.length <= MAX_BYTES) {
 			bytes += img.length
 			images.push(img)
