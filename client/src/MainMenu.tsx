@@ -1,16 +1,43 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+	ArrowDownToolbarItem,
+	ArrowLeftToolbarItem,
+	ArrowRightToolbarItem,
+	ArrowToolbarItem,
+	ArrowUpToolbarItem,
+	AssetToolbarItem,
+	CheckBoxToolbarItem,
+	CloudToolbarItem,
 	DefaultMainMenu,
 	DefaultMainMenuContent,
 	DefaultToolbar,
-	DefaultToolbarContent,
+	DiamondToolbarItem,
+	DrawToolbarItem,
+	EllipseToolbarItem,
+	EraserToolbarItem,
+	FrameToolbarItem,
+	HandToolbarItem,
+	HeartToolbarItem,
+	HexagonToolbarItem,
+	HighlightToolbarItem,
+	LaserToolbarItem,
+	LineToolbarItem,
+	NoteToolbarItem,
+	OvalToolbarItem,
+	RectangleToolbarItem,
+	RhombusToolbarItem,
+	SelectToolbarItem,
+	StarToolbarItem,
+	TextToolbarItem,
 	TLUiOverrides,
 	TldrawUiMenuGroup,
 	TldrawUiMenuItem,
 	TldrawUiMenuSubmenu,
 	TldrawUiToolbar,
 	TldrawUiToolbarButton,
+	TriangleToolbarItem,
+	XBoxToolbarItem,
 	defaultHandleExternalFileContent,
 	useEditor,
 	useToasts,
@@ -45,15 +72,43 @@ function AiToolbarButton() {
 	)
 }
 
-/** Toolbar = default tools + AI button. The AI button is wrapped in a
- *  TldrawUiToolbar (Radix Toolbar.Root) because TldrawUiToolbarButton requires one. */
+/** Toolbar = the default tool items, with the AI button placed right after the Draw
+ *  tool. (The AI button is wrapped in a TldrawUiToolbar = Radix Toolbar.Root, required
+ *  by TldrawUiToolbarButton.) */
 function CustomToolbar() {
 	return (
 		<DefaultToolbar>
-			<DefaultToolbarContent />
+			<SelectToolbarItem />
+			<HandToolbarItem />
+			<DrawToolbarItem />
 			<TldrawUiToolbar label="Assistant IA">
 				<AiToolbarButton />
 			</TldrawUiToolbar>
+			<EraserToolbarItem />
+			<ArrowToolbarItem />
+			<TextToolbarItem />
+			<NoteToolbarItem />
+			<AssetToolbarItem />
+			<RectangleToolbarItem />
+			<EllipseToolbarItem />
+			<TriangleToolbarItem />
+			<DiamondToolbarItem />
+			<HexagonToolbarItem />
+			<OvalToolbarItem />
+			<RhombusToolbarItem />
+			<StarToolbarItem />
+			<CloudToolbarItem />
+			<HeartToolbarItem />
+			<XBoxToolbarItem />
+			<CheckBoxToolbarItem />
+			<ArrowLeftToolbarItem />
+			<ArrowUpToolbarItem />
+			<ArrowDownToolbarItem />
+			<ArrowRightToolbarItem />
+			<LineToolbarItem />
+			<HighlightToolbarItem />
+			<LaserToolbarItem />
+			<FrameToolbarItem />
 		</DefaultToolbar>
 	)
 }
