@@ -167,9 +167,6 @@ async function captureView(editor: Editor, mode: CaptureMode): Promise<Capture> 
 
 	for (const t of tiles) {
 		const isOverview = t.key === 'overview'
-		// NB: we deliberately KEEP signatures of chunks that scrolled out of view, so
-		// panning back to an unchanged region does NOT re-send it.
-		const changed = sentSigs.get(t.key) !== t.sig
 		const renderable = mode === 'tiles' || (mode === 'overview' && isOverview)
 		if (renderable) sentSigs.set(t.key, t.sig)
 
@@ -181,14 +178,14 @@ async function captureView(editor: Editor, mode: CaptureMode): Promise<Capture> 
 			h: t.box.h,
 			kind: isOverview ? 'overview' : 'chunk',
 		}
-		if (!changed) {
-			chunks.push({ ...meta, status: 'unchanged' })
-			continue
-		}
 		if (!renderable) {
 			chunks.push({ ...meta, status: 'not-attached' })
 			continue
 		}
+		// Always attach the visible chunks: the model is STATELESS between calls, so if
+		// it asks for the view it must actually receive it (otherwise it re-asks
+		// forever). The image cache (renderTile) still avoids re-rendering unchanged
+		// chunks, so this stays fast.
 		const budgetOk = images.length < MAX_TILES && bytes < MAX_BYTES
 		const img = budgetOk ? await renderTile(editor, t.box, t.key, t.sig) : null
 		if (img && bytes + img.length <= MAX_BYTES) {
