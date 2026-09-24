@@ -217,9 +217,6 @@ const AGENT_SYSTEM_PROMPT =
 const AGENT_MEMO_PROMPT =
 	" MEMOIRE INTERNE : a chaque fois que tu recois des images, ecris le contenu que tu as lu et verifie (equations, resultats, verdicts ; ex. 'demonstration que x = y : calculs corrects') dans un bloc <memo>...</memo>. Ce bloc est RETIRE avant d'etre montre a l'utilisateur, mais CONSERVE dans l'historique pour toi : c'est ta memoire des tuiles deja vues. Ne mets donc JAMAIS ce contenu dans ta reponse visible, et n'y recopie pas les details non essentiels (mise en page, dessins decoratifs, texte sans rapport). Fie-toi a cette memoire pour les zones deja vues : ne contredis pas ce que tu as deja verifie et ne redemande pas de capture des zones inchangees. Si tu as besoin de relire une zone precise, tu DOIS appeler l'outil read_chunks (et non lister les numeros de chunks dans ton texte) : emets uniquement l'appel d'outil, sans phrase."
 
-const AGENT_UI_PROMPT =
-	" Interface : le bouton BLEU (fleche) n'envoie QUE le texte. Le bouton VIOLET (icone 'capture d'ecran') envoie, en plus du texte, une capture de la vue ACTUELLE du tableau, decoupee en plusieurs tuiles haute definition (chaque zone est vue en pleine resolution). Si l'utilisateur te demande de verifier des calculs, de lire ce qu'il a ecrit ou de corriger quelque chose, et que tu n'as recu AUCUNE image pour ce message : ne devine pas et n'invente pas le contenu. Dis-lui d'appuyer sur le bouton VIOLET (icone capture d'ecran) pour t'envoyer sa vue. Tu peux aussi lui expliquer que ce bouton violet envoie la vue actuelle de son ecran au modele, en pleine resolution."
-
 const AGENT_UI_PROMPT_V2 =
 	" Outil : tu disposes de l'outil 'request_view' pour demander a l'utilisateur une capture de sa vue du tableau. mode='overview' = SEULEMENT la vue d'ensemble, limitee a l'ecran (suffisant pour comprendre la disposition). mode='tiles' = la vue d'ensemble PLUS des tuiles haute definition (indispensable pour LIRE l'ecriture fine, verifier des calculs ou des equations, corriger). Appelle cet outil des que tu as besoin de VOIR le tableau pour accomplir la demande de l'utilisateur. N'invente JAMAIS le contenu du tableau : si tu as besoin de le voir, appelle request_view. L'utilisateur n'a qu'un seul bouton d'envoi : c'est TOI qui decides quand demander la vue, et le systeme te l'envoie automatiquement."
 
@@ -340,7 +337,7 @@ function buildManifest(view, tiles, chunks) {
 					c.status === 'empty'
 						? 'vide (aucun contenu)'
 						: c.status === 'not-attached'
-							? 'non jointe (ce message est parti sans capture : appuie sur le bouton violet pour la recevoir)'
+							? 'non jointe (pas envoyee cette fois : si tu as besoin de la relire, appelle read_chunks)'
 							: "inchangee depuis ton dernier envoi (deja vue : fie-toi a ton resume)"
 				lines.push(`- ${where} : ${why}.`)
 			}
