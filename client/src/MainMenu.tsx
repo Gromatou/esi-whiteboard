@@ -50,8 +50,8 @@ import { agentPanel } from './agentPanelStore'
 
 const aiIconStyle: React.CSSProperties = {
 	display: 'inline-block',
-	width: 26,
-	height: 26,
+	width: 30,
+	height: 30,
 	backgroundColor: 'currentColor',
 	WebkitMaskImage: 'url(/ai-icon.png)',
 	maskImage: 'url(/ai-icon.png)',
