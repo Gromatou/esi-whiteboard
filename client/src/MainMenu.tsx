@@ -9,6 +9,7 @@ import {
 	TldrawUiMenuGroup,
 	TldrawUiMenuItem,
 	TldrawUiMenuSubmenu,
+	TldrawUiToolbarButton,
 	defaultHandleExternalFileContent,
 	useEditor,
 	useToasts,
@@ -21,8 +22,8 @@ import { agentPanel } from './agentPanelStore'
 
 const aiIconStyle: React.CSSProperties = {
 	display: 'inline-block',
-	width: 70,
-	height: 70,
+	width: 26,
+	height: 26,
 	backgroundColor: 'currentColor',
 	WebkitMaskImage: 'url(/ai-icon.png)',
 	maskImage: 'url(/ai-icon.png)',
@@ -34,28 +35,22 @@ const aiIconStyle: React.CSSProperties = {
 	maskPosition: 'center',
 }
 
-/** Toolbar button that toggles the AI assistant panel. */
+/** Toolbar button (proper toolbar item, not a menu item) that toggles the AI panel. */
 function AiToolbarButton() {
 	return (
-		<TldrawUiMenuItem
-			id="ai-panel"
-			label="Assistant IA"
-			icon={<span className="wb-ai-icon" style={aiIconStyle} />}
-			onSelect={() => agentPanel.toggle()}
-		/>
+		<TldrawUiToolbarButton type="icon" title="Assistant IA" onClick={() => agentPanel.toggle()}>
+			<span className="wb-ai-icon" style={aiIconStyle} />
+		</TldrawUiToolbarButton>
 	)
 }
 
 /** Toolbar = default tools + AI button (inside the toolbar container so it shares the background). */
 function CustomToolbar() {
 	return (
-		<>
-			<style>{`.tlui-main-toolbar button:has(.wb-ai-icon) { display: flex !important; visibility: visible !important; }`}</style>
-			<DefaultToolbar>
-				<DefaultToolbarContent />
-				<AiToolbarButton />
-			</DefaultToolbar>
-		</>
+		<DefaultToolbar>
+			<DefaultToolbarContent />
+			<AiToolbarButton />
+		</DefaultToolbar>
 	)
 }
 
